@@ -349,6 +349,9 @@ int removerColuna(Matriz *m, int coluna) {
     if (atual == NULL)
         return 0;
 
+    if (coluna == 0)
+        m->inicio = atual->direita;    
+
     while (atual != NULL) {
         No *abaixo = atual->baixo;
         No *esquerda = atual->esquerda;
