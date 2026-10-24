@@ -8,7 +8,7 @@ Trabalho 1 de Algoritmos e Estrutura de Dados III: simulação de uma matriz bid
 2. [Como compilar e executar](#2-como-compilar-e-executar)
 3. [Estruturas de dados (`struct`)](#3-estruturas-de-dados-struct)
 4. [Descrição das funções de `matriz.c`](#4-descrição-das-funções-de-matrizc)
-5. [Programa principal e menu (`main.c`)](#5-programa-principal-e-menu-mainc)
+5. [Programa principal e menu](#5-programa-principal-e-menu)
 6. [Tratamento da redundância de código](#6-tratamento-da-redundância-de-código)
 7. [Desafios e dificuldades](#7-desafios-e-dificuldades)
 8. [Considerações sobre a organização](#8-considerações-sobre-a-organização)
@@ -17,9 +17,9 @@ Trabalho 1 de Algoritmos e Estrutura de Dados III: simulação de uma matriz bid
 
 | Arquivo | Conteúdo |
 | --- | --- |
-| `matriz.h` | Estruturas de dados e protótipos das funções. |
-| `matriz.c` | Implementação das operações sobre a matriz encadeada. |
-| `main.c` | Função `main()`, leitura segura de dados e menu interativo. |
+| `matriz.h` | Estruturas de dados e protótipos das funções, incluindo `MENU()`, declarada logo abaixo de `criarNo()`. |
+| `matriz.c` | Implementação das operações sobre a matriz encadeada e da função `MENU()`, que é a última função do arquivo. |
+| `main.c` | Função `main()`: lê as dimensões, cria a matriz, chama `MENU()` e libera a memória ao final. |
 
 ## 2. Como compilar e executar
 
@@ -128,13 +128,20 @@ Remove a coluna indicada pelo índice, ajustando as conexões horizontais dos n�
 
 Percorre a matriz linha por linha e apresenta os valores de seus elementos na tela. Caso a matriz esteja vazia ou não tenha sido inicializada, informa essa condição.
 
-## 5. Programa principal e menu (`main.c`)
+## 5. Programa principal e menu
 
-O arquivo `main.c` conecta as funções de `matriz.c` à interação com o usuário. Ao iniciar, solicita a quantidade de linhas e de colunas, cria a matriz com `criarMatriz()` e exibe um menu que permanece ativo até que o usuário escolha sair. Ao encerrar, a memória é liberada com `desalocarMatriz()`.
+### `main()` (`main.c`)
 
-Os índices de linha e coluna são sempre indexados a partir de zero.
+A função `main()`:
 
-### Opções do menu
+1. solicita ao usuário a quantidade de linhas e de colunas;
+2. cria a matriz com `criarMatriz()` e, se a criação falhar (dimensões inválidas ou falta de memória), exibe "Erro ao criar a matriz!" e encerra;
+3. chama `MENU(matriz)`, que permanece em execução até o usuário escolher sair;
+4. libera a memória com `desalocarMatriz()` antes de encerrar.
+
+### `MENU()` (`matriz.c`)
+
+A função `MENU()` exibe as opções, lê a escolha do usuário e chama diretamente a função de `matriz.c` correspondente, por meio de um `switch`, repetindo até a opção 10. Seu protótipo fica em `matriz.h`, logo abaixo de `criarNo()`. Os índices de linha e coluna são sempre indexados a partir de zero.
 
 | Opção | Operação | Função utilizada |
 | --- | --- | --- |
@@ -147,29 +154,13 @@ Os índices de linha e coluna são sempre indexados a partir de zero.
 | 7 | Adicionar coluna | `adicionarColuna()` |
 | 8 | Remover linha | `removerLinha()` |
 | 9 | Remover coluna | `removerColuna()` |
-| 10 | Sair e liberar a memória | `desalocarMatriz()` |
+| 10 | Sair | encerra o menu; o `main()` libera a memória com `desalocarMatriz()` |
 
-A cada operação o programa exibe uma mensagem com o resultado. Opções inválidas e posições inexistentes são informadas ao usuário, que pode tentar novamente.
-
-### Funções auxiliares de leitura
-
-- **`lerInteiro()`**: lê uma linha com `fgets()` e a converte com `strtol()`. Rejeita letras, caracteres extras após o número, valores fora do intervalo de `int` e linhas longas demais, repetindo a pergunta até receber uma entrada válida. Retorna `0` apenas se a entrada terminar (EOF).
-- **`lerIndice()`**: usa `lerInteiro()` e repete a pergunta até que o valor esteja entre `0` e o limite informado, exibindo o intervalo aceito.
-- **`lerPosicao()`**: lê linha e coluna reutilizando `lerIndice()` com os limites atuais da matriz.
-- **`lerECriarMatriz()`**: solicita as dimensões e chama `criarMatriz()`, repetindo o processo se as dimensões forem inválidas ou a alocação falhar.
-- **`descartarLinha()`**: descarta o restante de uma linha digitada quando ela excede o tamanho do buffer.
-
-### Funções de operação
-
-- **`opInserir()`**, **`opAcessar()`**, **`opBuscar()`** e **`opVizinhos()`**: leem os dados necessários, chamam a função correspondente de `matriz.c` e exibem o resultado.
-- **`opBuscar()`** informa também a posição `(linha, coluna)` do valor encontrado, obtida por meio de **`obterCoordenadas()`**, que percorre a matriz comparando o endereço do nó retornado por `buscarValor()`.
-- **`opAdicionar()`**: recebe por ponteiro de função `adicionarLinha()` ou `adicionarColuna()` e confirma o sucesso comparando a quantidade de linhas (ou colunas) antes e depois da operação.
-- **`opRemover()`**: recebe por ponteiro de função `removerLinha()` ou `removerColuna()`, lê o índice válido e informa o resultado.
-- **`exibirMenu()`**: apresenta as opções disponíveis.
+A cada operação o programa exibe uma mensagem com o resultado. Posições fora dos limites são tratadas pelo retorno das próprias funções: `inserirValor()` e `removerLinha()`/`removerColuna()` devolvem `0`, `acessarPosicao()` devolve `NULL` e `imprimirVizinhos()` exibe a mensagem de posição inválida. Uma opção fora do intervalo de 1 a 10 é informada ao usuário, e o menu é exibido novamente.
 
 ### Matriz vazia
 
-Quando a última linha ou coluna é removida, a matriz deixa de ter nós. Nesse caso, o `main()` avisa o usuário, libera a estrutura e solicita novas dimensões com `lerECriarMatriz()`, permitindo que o programa continue sem operar sobre uma matriz sem elementos.
+Quando a última linha ou coluna é removida, a matriz fica sem nós (`inicio` igual a `NULL`, com `linhas` e `colunas` iguais a zero). O menu continua disponível: `imprimirMatriz()` informa que a matriz está vazia, e inserções e consultas informam posição inválida.
 
 ## 6. Tratamento da redundância de código
 
@@ -193,15 +184,11 @@ As principais decisões em `matriz.c` foram:
 
 As funções `buscarValor()`, `imprimirMatriz()` e `desalocarMatriz()` mantêm percursos próprios porque possuem objetivos diferentes: localizar um valor, apresentar os elementos e liberar a memória, respectivamente. Embora compartilhem uma estrutura de percurso semelhante, reuni-las em uma única função não traria necessariamente uma redução de complexidade.
 
-No `main.c`, as decisões foram:
+Na `MENU()` e no `main.c`, as decisões foram:
 
-- **`lerInteiro()`** concentra toda a leitura e a validação de números. As demais funções de leitura e de operação a reutilizam, em vez de repetir `scanf()` e verificações em cada opção do menu.
+- **A `MENU()` apenas chama as funções de `matriz.c`**, sem reimplementar percursos, buscas ou remoções, e o `main()` só lê as dimensões, cria a matriz, chama o menu e libera a memória.
 
-- **`lerIndice()`** é reutilizada por `lerPosicao()` (linha e coluna) e por `opRemover()`, de modo que a validação de intervalo existe em um único lugar.
-
-- **`opAdicionar()` e `opRemover()`** tratam linhas e colunas com uma única implementação cada, recebendo a função específica por ponteiro. Isso evita ter quatro funções quase idênticas para as opções 6 a 9 do menu.
-
-- **`lerECriarMatriz()`** é usada tanto na criação inicial quanto na recriação da matriz após ela ficar vazia.
+- **Posições inválidas** não são verificadas de novo na `MENU()`: ela usa o retorno de `inserirValor()`, `acessarPosicao()`, `removerLinha()` e `removerColuna()`, que já validam os limites.
 
 ## 7. Desafios e dificuldades
 
@@ -209,22 +196,18 @@ No `main.c`, as decisões foram:
 
 - **Remoção da primeira linha ou coluna.** Remover a linha ou a coluna de índice `0` obriga a atualizar o ponteiro `inicio` da `Matriz`. Na primeira versão de `removerColuna()`, isso não era feito: ao remover a coluna `0`, `inicio` permanecia apontando para um nó já liberado (uso de memória após `free`). O problema foi identificado ao executar o programa com o AddressSanitizer e corrigido atribuindo `m->inicio = atual->direita` antes da liberação dos nós.
 
-- **Matriz vazia.** Remover a última linha ou coluna deixa a matriz sem nós, e operações como `adicionarLinha()` não têm uma coluna de referência para recriar a estrutura. Para evitar esse estado, o `main()` detecta a matriz vazia e solicita novas dimensões.
+- **Matriz vazia.** Remover a última linha ou coluna deixa a matriz sem nós (`inicio` igual a `NULL`, `linhas` e `colunas` zero). As funções que dependem de `inicio` precisam tratar esse estado: `matrizVazia()` centraliza a verificação, `validarPosicao()` devolve `0`, `imprimirMatriz()` informa que a matriz está vazia e `adicionarColuna()` apenas incrementa `colunas` quando não há linhas.
 
 - **Gerenciamento de memória.** Foi necessário garantir que todo nó alocado fosse liberado exatamente uma vez, inclusive quando a alocação falha no meio da criação da matriz e na remoção de linhas e colunas.
 
-- **Entrada de dados do usuário.** O uso direto de `scanf()` falha com entradas não numéricas, deixando caracteres no buffer. A leitura com `fgets()` e `strtol()` resolveu o problema, mas exigiu tratar linhas longas, caracteres extras e fim da entrada.
-
-- **Reduzir repetição.** Operações de linha e de coluna são muito parecidas, mas diferem nos ponteiros utilizados. No `main.c`, o uso de ponteiros de função permitiu compartilhar a lógica de leitura e de mensagens entre as duas.
-
 ## 8. Considerações sobre a organização
 
-A separação entre `matriz.h`, `matriz.c` e `main.c` permite organizar as declarações, as implementações e a interação com o usuário de maneira independente.
+A separação entre `matriz.h`, `matriz.c` e `main.c` permite organizar as declarações, as implementações e o ponto de entrada do programa de maneira independente.
 
 O arquivo `matriz.h` contém as estruturas de dados e os protótipos das funções, permitindo que outros arquivos conheçam a interface disponibilizada pelo módulo.
 
-O arquivo `matriz.c` contém a implementação das operações de criação, acesso, busca, inserção, impressão, expansão, remoção e liberação da matriz.
+O arquivo `matriz.c` contém a implementação das operações de criação, acesso, busca, inserção, impressão, expansão, remoção e liberação da matriz, além da função `MENU()`, que é a última do arquivo.
 
-O arquivo `main.c` contém apenas a interface com o usuário: leitura e validação de dados, menu e chamadas às funções do módulo. Nenhuma operação sobre os nós é feita diretamente nele, exceto a consulta de coordenadas em `obterCoordenadas()`.
+O arquivo `main.c` contém apenas a função `main()`, que lê as dimensões, cria a matriz, chama `MENU()` e libera a memória.
 
 Essa organização favorece a modularização, a reutilização das funções e a manutenção do código.

@@ -37,8 +37,6 @@ void imprimirMatriz(Matriz *m);
 int matrizVazia(Matriz *m);
 No* localizarElemento(Matriz *m, int linha, int coluna);
 No* criarNo(int valor);
-
-Matriz* lerECriarMatriz(void);
-Matriz* menu(Matriz *m);
+void MENU(Matriz *matriz);
 
 #endif
