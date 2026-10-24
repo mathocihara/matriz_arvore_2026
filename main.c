@@ -20,15 +20,8 @@ enum {
 };
 
 /* ------------------------------------------------------------------ */
-/* Leitura segura de dados                                            */
+/* Leitura segura de dados (o matriz.c nao trata entrada do usuario)  */
 /* ------------------------------------------------------------------ */
-
-/* Descarta o que sobrou na linha de entrada (buffer estourado). */
-static void descartarLinha(void) {
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF)
-        ;
-}
 
 /* Le um inteiro, repetindo a pergunta ate a entrada ser valida.
    Retorna 0 apenas se a entrada terminar (EOF). */
@@ -42,7 +35,9 @@ static int lerInteiro(const char *mensagem, int *valor) {
             return 0;
 
         if (strchr(buffer, '\n') == NULL) {
-            descartarLinha();
+            int c;
+            while ((c = getchar()) != '\n' && c != EOF)
+                ;
             printf("Entrada muito longa. Tente novamente.\n");
             continue;
         }
@@ -51,17 +46,12 @@ static int lerInteiro(const char *mensagem, int *valor) {
         errno = 0;
         long numero = strtol(buffer, &fim, 10);
 
-        if (fim == buffer || errno == ERANGE ||
-            numero < INT_MIN || numero > INT_MAX) {
-            printf("Entrada invalida. Digite um numero inteiro.\n");
-            continue;
-        }
-
         while (isspace((unsigned char)*fim))
             fim++;
 
-        if (*fim != '\0') {
-            printf("Entrada invalida. Digite apenas um numero inteiro.\n");
+        if (fim == buffer || *fim != '\0' || errno == ERANGE ||
+            numero < INT_MIN || numero > INT_MAX) {
+            printf("Entrada invalida. Digite um numero inteiro.\n");
             continue;
         }
 
@@ -70,21 +60,20 @@ static int lerInteiro(const char *mensagem, int *valor) {
     }
 }
 
-/* Le um indice no intervalo [0, limite - 1], repetindo ate ser valido. */
+/* Le um indice em [0, limite - 1], repetindo ate ser valido. */
 static int lerIndice(const char *rotulo, int limite, int *indice) {
     char mensagem[TAM_BUFFER];
     snprintf(mensagem, sizeof mensagem, "%s (0 a %d): ", rotulo, limite - 1);
 
-    while (1) {
-        if (!lerInteiro(mensagem, indice))
-            return 0;
-
+    while (lerInteiro(mensagem, indice)) {
         if (*indice >= 0 && *indice < limite)
             return 1;
 
         printf("%s inexistente. Escolha um valor entre 0 e %d.\n",
                rotulo, limite - 1);
     }
+
+    return 0;
 }
 
 static int lerPosicao(Matriz *m, int *linha, int *coluna) {
@@ -113,110 +102,6 @@ static Matriz *lerECriarMatriz(void) {
     return m;
 }
 
-/* ------------------------------------------------------------------ */
-/* Operacoes do menu                                                  */
-/* ------------------------------------------------------------------ */
-
-/* Descobre a posicao (linha, coluna) de um no percorrendo a matriz. */
-static int obterCoordenadas(Matriz *m, No *alvo, int *linha, int *coluna) {
-    int i = 0;
-
-    for (No *l = m->inicio; l != NULL; l = l->baixo, i++) {
-        int j = 0;
-        for (No *a = l; a != NULL; a = a->direita, j++) {
-            if (a == alvo) {
-                *linha = i;
-                *coluna = j;
-                return 1;
-            }
-        }
-    }
-
-    return 0;
-}
-
-static void opInserir(Matriz *m) {
-    int linha, coluna, valor;
-
-    if (!lerPosicao(m, &linha, &coluna) ||
-        !lerInteiro("Valor a inserir: ", &valor))
-        return;
-
-    if (inserirValor(m, linha, coluna, valor))
-        printf("Valor %d inserido em (%d, %d).\n", valor, linha, coluna);
-    else
-        printf("Nao foi possivel inserir o valor.\n");
-}
-
-static void opAcessar(Matriz *m) {
-    int linha, coluna;
-
-    if (!lerPosicao(m, &linha, &coluna))
-        return;
-
-    No *no = acessarPosicao(m, linha, coluna);
-    if (no != NULL)
-        printf("Valor em (%d, %d): %d\n", linha, coluna, no->valor);
-    else
-        printf("Posicao invalida.\n");
-}
-
-static void opBuscar(Matriz *m) {
-    int valor, linha, coluna;
-
-    if (!lerInteiro("Valor a buscar: ", &valor))
-        return;
-
-    No *no = buscarValor(m, valor);
-    if (no != NULL && obterCoordenadas(m, no, &linha, &coluna))
-        printf("Valor %d encontrado em (%d, %d).\n", valor, linha, coluna);
-    else
-        printf("Valor %d nao encontrado.\n", valor);
-}
-
-static void opVizinhos(Matriz *m) {
-    int linha, coluna;
-
-    if (!lerPosicao(m, &linha, &coluna))
-        return;
-
-    printf("Vizinhos de (%d, %d):\n", linha, coluna);
-    imprimirVizinhos(m, linha, coluna);
-}
-
-/* Serve para adicionarLinha e adicionarColuna: `contador` aponta para
-   m->linhas ou m->colunas, usado para confirmar que a operacao ocorreu. */
-static void opAdicionar(Matriz *m, const char *rotulo,
-                        void (*adicionar)(Matriz *), const int *contador) {
-    int antes = *contador;
-
-    adicionar(m);
-
-    if (*contador > antes)
-        printf("%s adicionada. Matriz agora e %dx%d.\n",
-               rotulo, m->linhas, m->colunas);
-    else
-        printf("Nao foi possivel adicionar a %s.\n", rotulo);
-}
-
-/* Serve para removerLinha e removerColuna. */
-static void opRemover(Matriz *m, const char *rotulo, int limite,
-                      int (*remover)(Matriz *, int)) {
-    int indice;
-
-    if (!lerIndice(rotulo, limite, &indice))
-        return;
-
-    if (remover(m, indice))
-        printf("%s %d removida.\n", rotulo, indice);
-    else
-        printf("Nao foi possivel remover a %s.\n", rotulo);
-}
-
-/* ------------------------------------------------------------------ */
-/* Menu                                                               */
-/* ------------------------------------------------------------------ */
-
 static void exibirMenu(void) {
     printf("\n===== MATRIZ ENCADEADA =====\n");
     printf(" 1. Imprimir matriz\n");
@@ -231,16 +116,17 @@ static void exibirMenu(void) {
     printf("10. Sair\n");
 }
 
+/* ------------------------------------------------------------------ */
+/* Programa principal: le a opcao e chama as funcoes do matriz.c      */
+/* ------------------------------------------------------------------ */
+
 int main(void) {
     Matriz *m = lerECriarMatriz();
-    if (m == NULL)
-        return EXIT_FAILURE;
+    int opcao = 0, linha, coluna, valor;
+    No *no;
 
-    int opcao;
-
-    do {
+    while (m != NULL && opcao != OP_SAIR) {
         exibirMenu();
-
         if (!lerInteiro("Opcao: ", &opcao))
             opcao = OP_SAIR;
 
@@ -248,47 +134,90 @@ int main(void) {
             case OP_IMPRIMIR:
                 imprimirMatriz(m);
                 break;
+
             case OP_INSERIR:
-                opInserir(m);
+                if (lerPosicao(m, &linha, &coluna) &&
+                    lerInteiro("Valor a inserir: ", &valor)) {
+                    if (inserirValor(m, linha, coluna, valor))
+                        printf("Valor %d inserido em (%d, %d).\n",
+                               valor, linha, coluna);
+                    else
+                        printf("Nao foi possivel inserir o valor.\n");
+                }
                 break;
+
             case OP_ACESSAR:
-                opAcessar(m);
+                if (lerPosicao(m, &linha, &coluna)) {
+                    no = acessarPosicao(m, linha, coluna);
+                    if (no != NULL)
+                        printf("Valor em (%d, %d): %d\n",
+                               linha, coluna, no->valor);
+                    else
+                        printf("Posicao invalida.\n");
+                }
                 break;
+
             case OP_BUSCAR:
-                opBuscar(m);
+                if (lerInteiro("Valor a buscar: ", &valor)) {
+                    if (buscarValor(m, valor) != NULL)
+                        printf("Valor %d encontrado.\n", valor);
+                    else
+                        printf("Valor %d nao encontrado.\n", valor);
+                }
                 break;
+
             case OP_VIZINHOS:
-                opVizinhos(m);
+                if (lerPosicao(m, &linha, &coluna))
+                    imprimirVizinhos(m, linha, coluna);
                 break;
+
             case OP_ADD_LINHA:
-                opAdicionar(m, "Linha", adicionarLinha, &m->linhas);
+                adicionarLinha(m);
+                printf("Dimensoes atuais: %dx%d\n", m->linhas, m->colunas);
                 break;
+
             case OP_ADD_COLUNA:
-                opAdicionar(m, "Coluna", adicionarColuna, &m->colunas);
+                adicionarColuna(m);
+                printf("Dimensoes atuais: %dx%d\n", m->linhas, m->colunas);
                 break;
+
             case OP_REM_LINHA:
-                opRemover(m, "Linha", m->linhas, removerLinha);
+                if (lerIndice("Linha", m->linhas, &linha)) {
+                    if (removerLinha(m, linha))
+                        printf("Linha %d removida.\n", linha);
+                    else
+                        printf("Nao foi possivel remover a linha.\n");
+                }
                 break;
+
             case OP_REM_COLUNA:
-                opRemover(m, "Coluna", m->colunas, removerColuna);
+                if (lerIndice("Coluna", m->colunas, &coluna)) {
+                    if (removerColuna(m, coluna))
+                        printf("Coluna %d removida.\n", coluna);
+                    else
+                        printf("Nao foi possivel remover a coluna.\n");
+                }
                 break;
+
             case OP_SAIR:
                 printf("Encerrando e liberando memoria...\n");
                 break;
+
             default:
                 printf("Opcao invalida. Escolha um numero de 1 a 10.\n");
         }
 
-        /* Se a ultima linha/coluna foi removida, a matriz deixa de existir
-           na pratica: pede novas dimensoes para continuar. */
+        /* Se a ultima linha/coluna foi removida, a matriz ficou sem nos:
+           libera a estrutura e pede novas dimensoes. */
         if (opcao != OP_SAIR && matrizVazia(m)) {
             printf("\nA matriz ficou vazia. Crie uma nova.\n");
             desalocarMatriz(m);
             m = lerECriarMatriz();
-            if (m == NULL)
-                return EXIT_FAILURE;
         }
-    } while (opcao != OP_SAIR);
+    }
+
+    if (m == NULL)
+        return EXIT_FAILURE;
 
     desalocarMatriz(m);
     return EXIT_SUCCESS;
